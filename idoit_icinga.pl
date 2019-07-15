@@ -7,12 +7,20 @@ use JSON;
 use HTTP::Headers;
 use LWP::Simple qw(get);
 use Data::Dumper;
-
+use Getopt::Long qw(GetOptions);
 
 my $url = 'https://idoit.svc.eurotux.pt/i-doit/src/jsonrpc.php';
 my $header = [ 'Content-type' => 'application/json' ];
 my @array = ();
-
+my %group_type_hash = ('building' => 3,
+			'server' => 5,
+			'switch' => 8,
+			'client' => 10,
+			'printer' => 11,
+			'storage' => 12,
+			'appliance' => 23,
+			'accesspoint' => 27,
+			'virtual' => 59);
 
 sub IDOIT_listREQUEST{
 	my $group_type = $_[0];
@@ -31,7 +39,7 @@ sub IDOIT_listREQUEST{
 
 
 #In case you need to generate a batch of similar JSON requests changing just the ID and the category
-sub IDOIT_cmbd_category_read_GENERATOR{
+sub IDOIT_cat_read_GENERATOR{
 	my $id = $_[0];
 	my $category = $_[1];
 	my $apikey = $_[2];
@@ -39,6 +47,13 @@ sub IDOIT_cmbd_category_read_GENERATOR{
 	return $body;
 }
 
+#Object read generator
+sub IDOIT_obj_read_GENERATOR{
+	my $id = $_[0];
+        my $apikey = $_[1];
+        my $body = to_json({"version"=>"2.0","method"=>"cmdb.object.read","params"=>{"id"=>$id,"apikey"=>$apikey,"language"=>"en"},"id"=>1});
+        return $body;
+}
 
 #Just pass the JSON body as an argument
 sub IDOIT_general_REQUEST{
@@ -53,31 +68,50 @@ sub IDOIT_general_REQUEST{
         my $responseJSON =  $lwp->request($req);
         return decode_json($responseJSON->content);
 }
+
+
+
 ##############################################################
 ##############################################################
 ##############################################################
+#		Functions related to icinga		     #
+#							     #		
+
 
 sub ICINGA_queryHost_body_GENERATOR{
-	my host
-	my $user = $_[0]
+	my $host;
+	my $user = $_[0];
 }
 
 
+##############################################################
+##############################################################
+##############################################################
+#			Actual Script			     #
+#							     #
 
 
-my $responseJSON = IDOIT_listREQUEST(5, "lk3cuqphh", "https://idoit.svc.eurotux.pt/i-doit/src/jsonrpc.php");
+
+my $obj_type;
+GetOptions('type=s' => \$obj_type,) or die "Usage: $0 --from NAME\n";
+
+#print $group_type_hash{$obj_type};
+
+
+my $responseJSON = IDOIT_listREQUEST($group_type_hash{$obj_type}, "lk3cuqphh", "https://idoit.svc.eurotux.pt/i-doit/src/jsonrpc.php");
 my @list = ($responseJSON->{result});
 #print Dumper $responseJSON->{result}->[0];
 foreach my $titles (@list){
 	foreach my $title (@$titles){
-		my $ip_response = IDOIT_general_REQUEST($url, IDOIT_cmbd_category_read_GENERATOR($title->{id},"C__CATG__IP", "lk3cuqphh"), "lk3cuqphh");
+		my $ip_response = IDOIT_general_REQUEST($url, IDOIT_cat_read_GENERATOR($title->{id},"C__CATG__IP", "lk3cuqphh"), "lk3cuqphh");
 		print "Title\t$title->{title}\n";
 		print "Type\t$title->{type_title}\n";
 		print "$ip_response->{result}->[0]->{primary_hostaddress}->{ref_title}\n";	
-		print "---------------------------\n";
+		print "---------------------:------\n";
 		print "---------------------------\n";
 	}
 }
+
 
 
 
