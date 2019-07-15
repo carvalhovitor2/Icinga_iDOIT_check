@@ -8,6 +8,7 @@ use HTTP::Headers;
 use LWP::Simple qw(get);
 use Data::Dumper;
 use Getopt::Long qw(GetOptions);
+use HTTP::Request::Common;
 
 my $url = 'https://idoit.svc.eurotux.pt/i-doit/src/jsonrpc.php';
 my $header = [ 'Content-type' => 'application/json' ];
@@ -78,11 +79,45 @@ sub IDOIT_general_REQUEST{
 #							     #		
 
 
-sub ICINGA_queryHost_body_GENERATOR{
-	my $host;
+sub ICINGA_query_hosts{
+	#my $type = $_[0];
 	my $user = $_[0];
+	my $pass = $_[1];
+	#	my $uri = "https://10.10.10.239:5665/v1/objects/$type";
+	my $ua = LWP::UserAgent->new();
+        $ua->ssl_opts( verify_hostname => 0 ,SSL_verify_mode => 0x00);
+	my $req = GET 'https://localhost:5665/v1/objects/hosts';
+	$req->authorization_basic("$user", "$pass");
+	my $response = $ua->request($req);
+	return decode_json($response->content);
 }
 
+sub ICINGA_hostname_search{
+	my @list1 = $_[0];
+	my $hostname = $_[1];
+	my $host_ip = $_[2];
+	my $flag = 0;
+	foreach my $names (@list1){
+        	foreach my $name (@$names){
+			#	print "$hostname\n";
+			#	print "print "$name->{name}\n";
+                	if ($host_ip eq $name->{attrs}->{address}){
+				if ( $hostname eq $name->{name} ){
+					$flag = 1;
+					return $flag;
+				}
+				else {
+					$flag = 2;
+					return $flag;
+				}
+			}
+        	        
+        	
+		}
+
+	}	
+	return $flag;
+}
 
 ##############################################################
 ##############################################################
@@ -92,27 +127,49 @@ sub ICINGA_queryHost_body_GENERATOR{
 
 
 
-my $obj_type;
-GetOptions('type=s' => \$obj_type,) or die "Usage: $0 --from NAME\n";
+my $obj_type = "server";
+GetOptions('type=s' => \$obj_type,) or die "Usage: $0 --type {server, client, switch, printer, storage, virtual, building, accesspoint, appliance}\n ";
 
 #print $group_type_hash{$obj_type};
 
-
 my $responseJSON = IDOIT_listREQUEST($group_type_hash{$obj_type}, "lk3cuqphh", "https://idoit.svc.eurotux.pt/i-doit/src/jsonrpc.php");
 my @list = ($responseJSON->{result});
+my $icinga_response = ICINGA_query_hosts("root", "c1552fd540393237");
+my @lista = ($icinga_response->{results});
 #print Dumper $responseJSON->{result}->[0];
 foreach my $titles (@list){
 	foreach my $title (@$titles){
 		my $ip_response = IDOIT_general_REQUEST($url, IDOIT_cat_read_GENERATOR($title->{id},"C__CATG__IP", "lk3cuqphh"), "lk3cuqphh");
-		print "Title\t$title->{title}\n";
-		print "Type\t$title->{type_title}\n";
-		print "$ip_response->{result}->[0]->{primary_hostaddress}->{ref_title}\n";	
-		print "---------------------:------\n";
-		print "---------------------------\n";
-	}
+		#	print "Title\t$title->{title}\n";
+		#	print "print "Type\t$title->{type_title}\n";
+		#	print "print "$ip_response->{result}->[0]->{primary_hostaddress}->{ref_title}\n";	
+		#	print "print "---------------------:------\n";
+		#	print "print "---------------------------\n";
+		if(ICINGA_hostname_search(@lista, $title->{title}, $ip_response->{result}->[0]->{primary_hostaddress}->{ref_title}) == 0){
+			print "Host: $title->{title} - NOT BEING MONITORED\n";
+			print "---------------------------------------------\n";
+			next;
+		}
+		elsif(ICINGA_hostname_search(@lista, $title->{title}, $ip_response->{result}->[0]->{primary_hostaddress}->{ref_title}) == 2){
+			print "Host: $title->{title} - OUTDATED\n";
+			print "---------------------------------------------\n";
+			next;
+		}
+		 elsif(ICINGA_hostname_search(@lista, $title->{title}, $ip_response->{result}->[0]->{primary_hostaddress}->{ref_title}) == 1){
+			print "Host: $title->{title} - OK";
+			next;
+		}
+	}	
 }
 
 
-
+#my $icinga_response = ICINGA_query_hosts("root", "c1552fd540393237");
+#my @list1 = ($icinga_response->{results});
+#foreach my $names (@list1){
+#	foreach my $name (@$names){
+#		print "$name->{name}\n";
+#		print "$name->{attrs}->{address}\n";
+#	}
+#}
 
 
