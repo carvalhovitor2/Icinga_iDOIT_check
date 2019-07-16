@@ -11,7 +11,13 @@ use Getopt::Long qw(GetOptions);
 use Getopt::Long;
 use HTTP::Request::Common;
 
-my $url = 'https://idoit.svc.eurotux.pt/i-doit/src/jsonrpc.php';
+
+
+my $idoit_url = 'https://idoit.svc.eurotux.pt/i-doit/src/jsonrpc.php';
+my $idoit_apikey = "lk3cuqphh";
+my $icinga_url = 'https://localhost:5665/v1/objects/hosts';
+my $icinga_user = "root";
+my $icinga_password = "c1552fd540393237";
 my $header = [ 'Content-type' => 'application/json' ];
 my @array = ();
 my %group_type_hash = ('building' => 3,
@@ -81,13 +87,13 @@ sub IDOIT_general_REQUEST{
 
 
 sub ICINGA_query_hosts{
-	#my $type = $_[0];
-	my $user = $_[0];
-	my $pass = $_[1];
+	my $icinga_url = $_[0];
+	my $user = $_[1];
+	my $pass = $_[2];
 	#	my $uri = "https://10.10.10.239:5665/v1/objects/$type";
 	my $ua = LWP::UserAgent->new();
         $ua->ssl_opts( verify_hostname => 0 ,SSL_verify_mode => 0x00);
-	my $req = GET 'https://localhost:5665/v1/objects/hosts';
+	my $req = GET $icinga_url;
 	$req->authorization_basic("$user", "$pass");
 	my $response = $ua->request($req);
 	return decode_json($response->content);
@@ -179,16 +185,17 @@ if ($all){
 }
 
 foreach my $r (@obj_type){
-	#print $group_type_hash{$obj_type};
-	my $responseJSON = IDOIT_listREQUEST($group_type_hash{$r}, "lk3cuqphh", "https://idoit.svc.eurotux.pt/i-doit/src/jsonrpc.php");
-	my @list = ($responseJSON->{result});
-	my $icinga_response = ICINGA_query_hosts("root", "c1552fd540393237");
-	my @lista = ($icinga_response->{results});
-	#print Dumper $responseJSON->{result}->[0];
-	foreach my $titles (@list){
+	#Query idoit hosts
+	my $responseJSON = IDOIT_listREQUEST($group_type_hash{$r}, $idoit_apikey, $idoit_url);
+	my @idoit_host_list = ($responseJSON->{result});
+	#Query icinga hosts
+	my $icinga_response = ICINGA_query_hosts($icinga_url, $icinga_user, $icinga_password);
+	my @icinga_host_list = ($icinga_response->{results});
+	#fetches IP and compares
+	foreach my $titles (@idoit_host_list){
 		foreach my $title (@$titles){
-			my $ip_response = IDOIT_general_REQUEST($url, IDOIT_cat_read_GENERATOR($title->{id},"C__CATG__IP", "lk3cuqphh"), "lk3cuqphh");
-			print my $la = compare(@lista, $title->{title}, $ip_response->{result}->[0]->{primary_hostaddress}->{ref_title});		
+			my $ip_response = IDOIT_general_REQUEST($idoit_url, IDOIT_cat_read_GENERATOR($title->{id},"C__CATG__IP", $idoit_apikey), $idoit_apikey);
+			print my $la = compare(@icinga_host_list, $title->{title}, $ip_response->{result}->[0]->{primary_hostaddress}->{ref_title});		
 		}	
 	}	        
 	                
