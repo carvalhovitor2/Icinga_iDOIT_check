@@ -18,8 +18,6 @@ my $idoit_apikey = "lk3cuqphh";
 my $icinga_url = 'https://localhost:5665/v1/objects/hosts';
 my $icinga_user = "root";
 my $icinga_password = "c1552fd540393237";
-my $header = [ 'Content-type' => 'application/json' ];
-my @array = ();
 my %group_type_hash = ('building' => 3,
 			'server' => 5,
 			'switch' => 8,
@@ -39,9 +37,9 @@ sub IDOIT_listREQUEST{
 	my $req = HTTP::Request->new( 'POST', $url);
 	$req->header( 'Content-Type' => 'application/json' );
 	$req->content ( $body );
-	my $lwp = LWP::UserAgent->new;
-	$lwp->ssl_opts( verify_hostname => 0 ,SSL_verify_mode => 0x00);
-	my $responseJSON =  $lwp->request($req);
+	my $ua = LWP::UserAgent->new;
+	$ua->ssl_opts( verify_hostname => 0 ,SSL_verify_mode => 0x00);
+	my $responseJSON =  $ua->request($req);
 	return decode_json($responseJSON->content);
 }
 
@@ -71,9 +69,9 @@ sub IDOIT_general_REQUEST{
 	my $req = HTTP::Request->new( 'POST', $url);
         $req->header( 'Content-Type' => 'application/json' );
         $req->content ( $body );
-        my $lwp = LWP::UserAgent->new;
-        $lwp->ssl_opts( verify_hostname => 0 ,SSL_verify_mode => 0x00);
-        my $responseJSON =  $lwp->request($req);
+        my $ua = LWP::UserAgent->new;
+        $ua->ssl_opts( verify_hostname => 0 ,SSL_verify_mode => 0x00);
+        my $responseJSON =  $ua->request($req);
         return decode_json($responseJSON->content);
 }
 
@@ -149,12 +147,11 @@ sub compare{
                         if ($host_ip eq $name->{attrs}->{address}){
                                 if ( $hostname eq $name->{name} ){
                                         return "$type: $hostname- OK -  CHECK_PERIOD: $name->{check_period}\n---------------------------------------------\n";
-					#exit;
+					
                                 }
                                 else {
                                         return "$type: $hostname - OUTDATED (DIFFERENT HOSTNAME)- CHECK_PERIOD: $name->{check_period}\n---------------------------------------------\n";
-					#print "---------------------------------------------\n";
-					#exit;
+								
                                 }
                         }
 
@@ -163,8 +160,8 @@ sub compare{
 
         }
 	return "$type: $hostname - NOT BEING MONITORED \n---------------------------------------------\n";
-	#print "---------------------------------------------\n";
-	#exit;
+
+
 
 }
 
@@ -199,7 +196,7 @@ foreach my $host_type (@obj_type){
 	foreach my $titles (@idoit_host_list){
 		foreach my $title (@$titles){
 			my $ip_response = IDOIT_general_REQUEST($idoit_url, IDOIT_cat_read_GENERATOR($title->{id},"C__CATG__IP", $idoit_apikey), $idoit_apikey);
-			print my $la = compare(@icinga_host_list, $title->{title}, $ip_response->{result}->[0]->{primary_hostaddress}->{ref_title}, $host_type);		
+			print my $comparison = compare(@icinga_host_list, $title->{title}, $ip_response->{result}->[0]->{primary_hostaddress}->{ref_title}, $host_type);		
 		}	
 	}	        
 	                
