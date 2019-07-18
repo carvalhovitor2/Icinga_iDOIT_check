@@ -28,11 +28,19 @@ my %group_type_hash = ('building' => 3,
 			'accesspoint' => 27,
 			'virtual' => 59);
 
+
+##############################################################
+##############################################################
+##############################################################
+#		Functions related to idoit		     #      
+		
+		
+		
+#fetch all idoit hosts from a group_type	
 sub IDOIT_listREQUEST{
 	my $group_type = $_[0];
 	my $apikey = $_[1];
 	my $url = $_[2];
-	###Creating a batch request
 	my $body = to_json({"version"=>"2.0","method"=>"cmdb.objects.read","params"=>{"filter"=>{"type"=> $group_type},"order_by"=>"title","apikey"=>$apikey,"language"=>"en"},"id"=>1});	
 	my $req = HTTP::Request->new( 'POST', $url);
 	$req->header( 'Content-Type' => 'application/json' );
@@ -96,33 +104,9 @@ sub ICINGA_query_hosts{
 	return decode_json($response->content);
 }
 
-sub ICINGA_hostname_search{
-	my @list1 = $_[0];
-	my $hostname = $_[1];
-	my $host_ip = $_[2];
-	my $flag = 0;
-	if (!defined $host_ip){
-		return $flag
-	}
-	foreach my $names (@list1){
-        	foreach my $name (@$names){
-                	if ($host_ip eq $name->{attrs}->{address}){
-				if ( $hostname eq $name->{name} ){
-					$flag = 1;
-					return $flag;
-				}
-				else {
-					$flag = 2;
-					return $flag;
-				}
-			}
-        	        
-        	
-		}
 
-	}	
-	return $flag;
-}
+
+
 
 ##############################################################
 ##############################################################
@@ -173,19 +157,19 @@ sub compare{
 
 
 
-my @obj_type;
-GetOptions('type=s' => \@obj_type,
+my @host_types;
+GetOptions('type=s' => \@host_types,
 		'a|all' => \my $all) or die "Usage: $0 --type {server, client, switch, printer, storage, virtual, building, accesspoint, appliance}\n ";
 
-if(!defined $obj_type[0] && !defined $all){
+if(!defined $host_types[0] && !defined $all){
 	print  "Usage: $0 --type {server, client, switch, printer, storage, virtual, building, accesspoint, appliance} ||  -a (--all)\n ";
 	exit;
 }
 if ($all){
-	push @obj_type, "server", "client", "switch", "printer", "storage", "virtual", "building", "accesspoint", "appliance" ;
+	push @host_types, "server", "client", "switch", "printer", "storage", "virtual", "building", "accesspoint", "appliance" ;
 }
 
-foreach my $host_type (@obj_type){
+foreach my $host_type (@host_types){
 	#Query idoit hosts
 	my $responseJSON = IDOIT_listREQUEST($group_type_hash{$host_type}, $idoit_apikey, $idoit_url);
 	my @idoit_host_list = ($responseJSON->{result});
@@ -193,10 +177,10 @@ foreach my $host_type (@obj_type){
 	my $icinga_response = ICINGA_query_hosts($icinga_url, $icinga_user, $icinga_password);
 	my @icinga_host_list = ($icinga_response->{results});
 	#fetches IP and compares
-	foreach my $titles (@idoit_host_list){
-		foreach my $title (@$titles){
-			my $ip_response = IDOIT_general_REQUEST($idoit_url, IDOIT_cat_read_GENERATOR($title->{id},"C__CATG__IP", $idoit_apikey), $idoit_apikey);
-			print my $comparison = compare(@icinga_host_list, $title->{title}, $ip_response->{result}->[0]->{primary_hostaddress}->{ref_title}, $host_type);		
+	foreach my $result (@idoit_host_list){
+		foreach my $host (@$result){
+			my $ip_response = IDOIT_general_REQUEST($idoit_url, IDOIT_cat_read_GENERATOR($host->{id},"C__CATG__IP", $idoit_apikey), $idoit_apikey);
+			print my $comparison = compare(@icinga_host_list, $host->{title}, $ip_response->{result}->[0]->{primary_hostaddress}->{ref_title}, $host_type);		
 		}	
 	}	        
 	                
