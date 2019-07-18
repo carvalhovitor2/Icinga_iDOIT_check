@@ -116,25 +116,26 @@ sub ICINGA_query_hosts{
 
 
 sub compare{
-	my @list1 = $_[0];
+	my @icinga_host_list = $_[0];
         my $hostname = $_[1];
         my $host_ip = $_[2];
 	my $type = $_[3];
         if (!defined $host_ip){
-                return "$type: $hostname - NO DOCUMENTED IP FOUND IN I-DOIT\n---------------------------------------------\n";
+                return "$type: $hostname:NO DOCUMENTED IP FOUND IN I-DOIT\n";
         }
-        foreach my $names (@list1){
+	#print Dumper @icinga_host_list;
+        foreach my $names (@icinga_host_list){
                 foreach my $name (@$names){
 			if (!defined $name->{check_period}){
 				$name->{check_period} = "NO CHECK_PERIOD ASSIGNED";
 			}	
                         if ($host_ip eq $name->{attrs}->{address}){
                                 if ( $hostname eq $name->{name} ){
-                                        return "$type: $hostname- OK -  CHECK_PERIOD: $name->{check_period}\n---------------------------------------------\n";
+                                        return "$type:$hostname:OK:CHECK_PERIOD:$name->{check_period}\n";
 					
                                 }
                                 else {
-                                        return "$type: $hostname - OUTDATED (DIFFERENT HOSTNAME)- CHECK_PERIOD: $name->{check_period}\n---------------------------------------------\n";
+                                        return "$type:$hostname:OUTDATED (DIFFERENT HOSTNAME):CHECK_PERIOD:$name->{check_period}\n";
 								
                                 }
                         }
@@ -143,9 +144,7 @@ sub compare{
                 }
 
         }
-	return "$type: $hostname - NOT BEING MONITORED \n---------------------------------------------\n";
-
-
+	return "$type:$hostname:NOT BEING MONITORED\n";
 
 }
 
@@ -169,9 +168,9 @@ if ($all){
 	push @host_types, "server", "client", "switch", "printer", "storage", "virtual", "building", "accesspoint", "appliance" ;
 }
 
-foreach my $host_type (@host_types){
+foreach my $type (@host_types){
 	#Query idoit hosts
-	my $responseJSON = IDOIT_listREQUEST($group_type_hash{$host_type}, $idoit_apikey, $idoit_url);
+	my $responseJSON = IDOIT_listREQUEST($group_type_hash{$type}, $idoit_apikey, $idoit_url);
 	my @idoit_host_list = ($responseJSON->{result});
 	#Query icinga hosts
 	my $icinga_response = ICINGA_query_hosts($icinga_url, $icinga_user, $icinga_password);
@@ -180,7 +179,7 @@ foreach my $host_type (@host_types){
 	foreach my $result (@idoit_host_list){
 		foreach my $host (@$result){
 			my $ip_response = IDOIT_general_REQUEST($idoit_url, IDOIT_cat_read_GENERATOR($host->{id},"C__CATG__IP", $idoit_apikey), $idoit_apikey);
-			print my $comparison = compare(@icinga_host_list, $host->{title}, $ip_response->{result}->[0]->{primary_hostaddress}->{ref_title}, $host_type);		
+			print my $comparison = compare(@icinga_host_list, $host->{title}, $ip_response->{result}->[0]->{primary_hostaddress}->{ref_title}, $type);		
 		}	
 	}	        
 	                
