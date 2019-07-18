@@ -158,10 +158,10 @@ sub compare{
 
 my @host_types;
 GetOptions('type=s' => \@host_types,
-		'a|all' => \my $all) or die "Usage: $0 --type {server, client, switch, printer, storage, virtual, building, accesspoint, appliance}\n ";
+		'a|all' => \my $all) or die "Wrong syntax!\nUsage: $0 --type {server, client, switch, printer, storage, virtual, building, accesspoint, appliance}\n ";
 
 if(!defined $host_types[0] && !defined $all){
-	print  "Usage: $0 --type {server, client, switch, printer, storage, virtual, building, accesspoint, appliance} ||  -a (--all)\n ";
+	print  "Wrong syntax!\nUsage: $0 --type {server, client, switch, printer, storage, virtual, building, accesspoint, appliance} ||  -a (--all)\n ";
 	exit;
 }
 if ($all){
